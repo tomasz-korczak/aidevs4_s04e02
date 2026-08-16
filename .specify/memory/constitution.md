@@ -1,50 +1,95 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version change: (uninitialized template) → 1.0.0
+- Modified principles:
+  - [PRINCIPLE_1_NAME] → I. Parameter-Free Console Entry
+  - [PRINCIPLE_2_NAME] → II. One-Shot Autonomous Run
+  - [PRINCIPLE_3_NAME] → III. OpenRouter LLM for Decisions
+  - [PRINCIPLE_4_NAME] → IV. Flag-Seeking Action Loop
+  - [PRINCIPLE_5_NAME] → V. Minimal Surface Area
+- Added sections: Runtime Constraints, Development Workflow
+- Removed sections: none (placeholders replaced)
+- Follow-up TODOs: none
+-->
+
+# s04e02 CTF Agent Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Parameter-Free Console Entry
+The application MUST be a console program that accepts no command-line
+parameters. Configuration MUST come from environment variables or fixed
+project defaults. Invocation MUST be a single start command with no flags,
+positional args, or interactive prompts required to begin the run.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Rationale: The exercise is a fixed CTF scenario; CLI parsing adds surface
+area without value.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. One-Shot Autonomous Run
+Each process start MUST perform one end-to-end attempt: run the action
+sequence, evaluate outcomes, and exit. The program MUST NOT wait for
+ongoing user input after start. Success is finding and reporting the flag;
+failure MUST exit with a clear console message.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Rationale: This is a one-time exercise runner, not a long-lived service
+or REPL.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. OpenRouter LLM for Decisions
+All LLM calls MUST go through the OpenRouter API. API credentials MUST
+NOT be hard-coded; they MUST be read from the environment. Non-LLM work
+(HTTP, parsing, orchestration) MAY use ordinary code, but decision-making
+that needs language-model capability MUST use OpenRouter.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Rationale: The exercise goal depends on LLM reasoning via a single,
+explicit provider.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Flag-Seeking Action Loop
+The runtime MUST execute a series of actions, inspect each result, and
+continue until the flag is found or the attempt is exhausted. Each step
+MUST feed observations back into the next decision. The program MUST
+stop when the flag is identified and MUST surface that flag on stdout.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Rationale: Capture-the-flag success is defined by discovering the flag
+through iterative act-and-inspect cycles.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Minimal Surface Area
+Implement only what the CTF run needs. Prefer a single process and a
+small module layout over frameworks, daemons, or unused abstractions.
+If a dependency or layer is not required to call OpenRouter, run actions,
+or detect the flag, it MUST NOT be added.
+
+Rationale: Bare-minimum scope keeps the exercise focused and maintainable.
+
+## Runtime Constraints
+
+- Delivery form: console application only (no GUI, no HTTP server).
+- CLI: zero command-line parameters; no required interactive setup after launch.
+- LLM provider: OpenRouter API exclusively for model access.
+- Secrets: OpenRouter API key and any related tokens via environment only.
+- Lifecycle: one process run equals one autonomous CTF attempt.
+- Output: progress and final flag (or failure reason) on the console.
+
+## Development Workflow
+
+- Spec Kit artifacts (spec, plan, tasks) MUST stay aligned with this
+  constitution before implementation work proceeds.
+- Changes that introduce CLI args, interactive setup, alternate LLM
+  providers, or multi-run daemon behavior REQUIRE a constitution amendment
+  first.
+- Prefer readable orchestration code over premature abstraction.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes conflicting informal practices for this
+project. Amendments MUST update `.specify/memory/constitution.md`, bump
+`CONSTITUTION_VERSION` using semantic versioning (MAJOR for incompatible
+principle removals/redefinitions, MINOR for new or materially expanded
+guidance, PATCH for clarifications), set **Last Amended** to the amendment
+date (ISO YYYY-MM-DD), and record impact in the Sync Impact Report comment
+at the top of this file.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Compliance: plans, specs, and reviews MUST verify that proposed work still
+meets Principles I–V and Runtime Constraints. Complexity beyond the
+flag-seeking one-shot console flow MUST be justified in the plan or rejected.
+
+**Version**: 1.0.0 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-08-16
