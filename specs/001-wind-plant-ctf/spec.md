@@ -21,6 +21,8 @@
 - Q: After a windstorm, when does the roughly one-hour turbine reset-to-default clock start for deciding whether idle must be configured again? → A: One hour after the windstorm hour (hour-aligned occurrence time + 1h); forecast items have occurrence time only, no end time
 - Q: Which hours must appear as configuration batch items? → A: Only necessary hours: each relevant storm (including post-reset re-idle) plus the best safe production hour through first power
 - Q: In what order should configuration batch items be sent to the plant? → A: Chronological by configuration hour (earliest first)
+- Q: How must idle and max-production pitch angles be obtained? → A: MUST read pitch (or equivalent) from hub documentation / turbine payloads; if missing, fail the attempt and retry (new start)
+- Q: Who authors the configuration schedule relative to the LLM? → A: Hybrid — code builds the batch when reports parse cleanly; LLM fills gaps only when parsing fails; model is not the primary author when structured data is available
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -129,6 +131,9 @@ distinct signing code per batch item from the unlock-code step.
    storm idles and the best safe production setup.
 8. **Given** multiple configuration items in one batch, **When** the batch is
    sent, **Then** items are ordered chronologically by configuration hour.
+9. **Given** hub documentation/turbine payloads omit idle or max-production
+   pitch, **When** the schedule cannot be completed, **Then** the attempt fails
+   and restarts from start without inventing pitch values.
 
 ---
 
@@ -156,6 +161,8 @@ distinct signing code per batch item from the unlock-code step.
   production).
 - Forecast items carry occurrence time only (no end time); post-storm default
   reset is evaluated at storm hour + 1 hour.
+- Idle or max-production pitch missing from hub documentation/turbine payloads:
+  fail the current attempt and restart from start.
 
 ## Requirements *(mandatory)*
 
@@ -173,10 +180,12 @@ distinct signing code per batch item from the unlock-code step.
   obtained before the configuration command is sent.
 - **FR-004**: System MUST treat a windstorm as any period where wind speed is
   greater than or equal to turbine strength, and MUST configure idle (no power
-  production) with an appropriate pitch for every such period in the batch.
+  production) with a pitch angle obtained per FR-021 for every such period in
+  the batch.
 - **FR-005**: System MUST identify the best safe production opportunity
   (strongest wind still strictly below turbine strength) and configure the
-  turbine for maximum production performance at that opportunity.
+  turbine for maximum production performance at that opportunity using the
+  production pitch from FR-021.
 - **FR-006**: System MUST send configuration entries as one batch per attempt
   whenever possible to minimize session time, and MUST order batch items
   chronologically by configuration hour (earliest first).
@@ -221,12 +230,15 @@ distinct signing code per batch item from the unlock-code step.
 - **FR-017**: System MUST shut down immediately when the attempt limit is
   reached without acquiring a flag, and MUST report a clear failure reason on
   the console.
-- **FR-018**: System MUST derive idle, storm, and production schedule rules with
-  ordinary fixed logic from structured turbine and forecast data. Language-model
-  assistance MUST be limited to interpreting unstructured or ambiguous plant
-  report text when fixed parsing is insufficient, and MUST remain aligned with
-  the project constitution for how model access is provided. The model MUST NOT
-  be the primary author of the configuration batch.
+- **FR-018**: System MUST build the configuration batch with ordinary fixed
+  logic (`TurbineScheduleBuilder` or equivalent) whenever turbine and forecast
+  data parse into structured values. Language-model assistance MUST be limited
+  to (a) orchestrating `plantTool` calls and (b) interpreting unstructured or
+  ambiguous plant text only when fixed parsing is insufficient. When structured
+  data is available, the model MUST NOT be the primary author of the
+  configuration batch. Hybrid gap-fill by the model is allowed only for the
+  unparseable portions, and MUST remain aligned with the project constitution
+  for how model access is provided.
 - **FR-019**: If required credentials or the plant configuration service are
   unavailable at launch (before any start session is established), the system
   MUST exit immediately with a clear setup error on the console and MUST NOT
@@ -234,6 +246,12 @@ distinct signing code per batch item from the unlock-code step.
 - **FR-020**: System MUST write verbose console output for essentially every
   plant request and response during an attempt, in addition to attempt
   lifecycle messages (start of attempt, success flag, or final failure).
+- **FR-021**: System MUST obtain idle and max-production pitch angles (or
+  equivalent blade settings) from hub `documentation` and/or turbine-related
+  payloads (`turbinecheck` / related reports). If those pitch values cannot be
+  determined from hub responses, the system MUST treat the attempt as failed
+  and restart from `start` (consuming an attempt per FR-014). The system MUST
+  NOT invent pitch constants outside hub-provided guidance.
 
 ### Key Entities
 
@@ -296,15 +314,14 @@ distinct signing code per batch item from the unlock-code step.
 - “Enough power” and “safely turned off during windstorm” are judged by the
   plant service; the application’s job is to satisfy those rules using turbine
   strength and forecast data.
-- Exact idle pitch and max-production blade settings are derivable from the
-  turbine report and exercise guidance returned by the plant tool.
+- Exact idle pitch and max-production blade settings MUST come from hub
+  documentation/turbine payloads (FR-021); they are not soft assumptions.
+- Schedule authorship is hybrid per FR-018: code builds when data parses;
+  LLM gap-fills only when parsing fails.
 - Windstorm threshold is wind ≥ turbine strength (clarified); equal strength
   must idle even if earlier exercise wording said only “higher than.”
 - Attempt limit is configurable via environment or project defaults, not CLI
   arguments, preserving the parameter-free console constitution.
-- Language-model use follows the project constitution for access mechanics;
-  schedule/idle/production choices are fixed-rule driven, with the model only
-  assisting when report text cannot be parsed reliably.
 - Network access to the plant configuration service and required secrets are
   available in the runtime environment before launch.
 - One process run may include multiple attempts up to the limit, then exits;
