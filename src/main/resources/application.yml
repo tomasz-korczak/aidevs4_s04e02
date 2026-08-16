@@ -1,0 +1,44 @@
+spring:
+  main:
+    web-application-type: none
+  ai:
+    openai:
+      api-key: ${OPENROUTER_API_KEY:}
+      base-url: ${app.llm.openrouter-base-url}
+      chat:
+        options:
+          model: ${app.llm.model}
+
+app:
+  hub:
+    verify-url: https://hub.ag3nts.org/verify
+    task: windpower
+  llm:
+    model: inclusionai/ling-3.0-flash
+    openrouter-base-url: https://openrouter.ai/api/v1
+  plant:
+    max-session-attempts: 5
+    get-result-poll-interval-ms: 500
+    get-result-poll-max-interval-ms: 2000
+    session-over-message-patterns:
+      - "session is over"
+      - "configuration session is over"
+      - "service window is over"
+      - "service window expired"
+      - "window expired"
+    config-rejected-message-patterns:
+      - "incorrect"
+      - "insufficient power"
+      - "unsafe"
+      - "destroyed"
+  prompt:
+    system-template-location: classpath:prompts/system-prompt.txt
+
+logging:
+  file:
+    name: logs/s04e02.log
+  level:
+    root: INFO
+    pl.tomaszko.s04e02: INFO
+    pl.tomaszko.s04e02.tools: INFO
+    pl.tomaszko.s04e02.llm: INFO

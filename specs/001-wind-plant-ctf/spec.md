@@ -19,7 +19,7 @@
 - Q: When forecast wind speed is exactly equal to the turbine’s strength, should that hour be treated as a windstorm (idle) or as safe production wind? → A: Windstorm when wind ≥ turbine strength; equal must idle
 - Q: When during an attempt should the application obtain the unlock/signing code used on configuration entries? → A: Before sending the configuration command; each config batch item requires its own separate unlock code
 - Q: After a windstorm, when does the roughly one-hour turbine reset-to-default clock start for deciding whether idle must be configured again? → A: One hour after the windstorm hour (hour-aligned occurrence time + 1h); forecast items have occurrence time only, no end time
-- Q: Which hours must appear as configuration batch items? → A: Only necessary hours: each relevant storm (including post-reset re-idle) plus the best safe production hour through first power
+- Q: Which hours must appear as configuration batch items? → A: Idle for every windstorm in the forecast (including storms after first production) plus the best/earliest safe production hour; omit calm unused hours
 - Q: In what order should configuration batch items be sent to the plant? → A: Chronological by configuration hour (earliest first)
 - Q: How must idle and max-production pitch angles be obtained? → A: MUST read pitch (or equivalent) from hub documentation / turbine payloads; if missing, fail the attempt and retry (new start)
 - Q: Who authors the configuration schedule relative to the LLM? → A: Hybrid — code builds the batch when reports parse cleanly; LLM fills gaps only when parsing fails; model is not the primary author when structured data is available
@@ -91,12 +91,9 @@ The application obtains turbine capability data and weather forecasts, waits
 for asynchronous reports when needed, and builds a signed configuration batch
 that: idles the turbine for every windstorm (wind greater than or equal to
 turbine strength), targets maximum production at the strongest safe wind
-strictly below that strength, uses hour-precision times (minutes and seconds
-set to 0), re-applies idle protection one hour after each storm occurrence
-(storm hour + 1h) when another storm follows, and covers only necessary
-schedule entries through the first moment power can be produced (relevant
-storm idles including post-reset re-idle, plus best safe production)—not calm
-or unused hours.
+strictly below that strength (earliest hour on ties), uses hour-precision times
+(minutes and seconds set to 0), and includes idle for **all** forecast windstorms
+(including after production) plus best safe production—not calm or unused hours.
 
 **Why this priority**: Correct schedule logic is what makes plant validation
 succeed; it depends on P1 orchestration being present.
@@ -204,13 +201,13 @@ distinct signing code per batch item from the unlock-code step.
   turbine is assumed to reset to defaults one hour later (storm hour + 1h). If
   another windstorm is expected at or after that reset, the system MUST re-apply
   idle protection for that later storm.
-- **FR-010**: System MUST include configuration coverage through the first
-  moment when power can be produced by sending only necessary batch items:
-  idle setups for each relevant windstorm occurrence in that span (including
-  post-reset re-idle storms) and a max-production setup at the best safe
-  production hour. The system MUST NOT add configuration items for calm or
-  otherwise unused hours that are not required for storm safety or that first
-  production opportunity.
+- **FR-010**: System MUST send necessary batch items covering the full forecast
+  safety window: idle setups for **every** windstorm occurrence in the forecast
+  (including storms after the chosen production hour; post-reset later storms are
+  covered by their own idle entries) and a max-production setup at the best safe
+  production hour (earliest among equal max winds). The system MUST NOT add
+  configuration items for calm or otherwise unused hours that are not required
+  for storm safety or that production opportunity.
 - **FR-011**: System MUST handle asynchronous plant operations by ordering work
   first and later retrieving results via `getResult`. While waiting, the system
   MUST poll at a configurable interval defaulting to **500ms**, with optional

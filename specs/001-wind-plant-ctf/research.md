@@ -12,7 +12,7 @@
 
 - **Decision**: Depend on `spring-ai-starter-model-openai` and point it at OpenRouter:
   - `spring.ai.openai.api-key=${OPENROUTER_API_KEY}`
-  - `spring.ai.openai.base-url=https://openrouter.ai/api` (or `/api/v1` if required by the OpenAI SDK path in Spring AI 2.0)
+  - `spring.ai.openai.base-url=https://openrouter.ai/api/v1` (Spring AI 2.0 chat requires `/v1` in the base URL)
   - `spring.ai.openai.chat.options.model=inclusionai/ling-3.0-flash` (overridable via `app.llm.model`)
 - **Rationale**: OpenRouter exposes an OpenAI-compatible HTTP API; Spring AI has no separate OpenRouter starter. This is the documented integration pattern.
 - **Alternatives considered**: Raw RestClient to OpenRouter — loses ChatClient, advisors, and `@Tool` integration.

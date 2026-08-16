@@ -30,7 +30,7 @@ app:
     task: windpower
   llm:
     model: inclusionai/ling-3.0-flash
-    openrouter-base-url: https://openrouter.ai/api
+    openrouter-base-url: https://openrouter.ai/api/v1
   plant:
     max-session-attempts: 5
     get-result-poll-interval-ms: 500
@@ -38,7 +38,9 @@ app:
     session-over-message-patterns:
       - "session is over"
       - "configuration session is over"
-      - "service window"
+      - "service window is over"
+      - "service window expired"
+      - "window expired"
     config-rejected-message-patterns:
       - "incorrect"
       - "insufficient power"
