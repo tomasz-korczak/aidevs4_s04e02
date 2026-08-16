@@ -99,6 +99,15 @@ Async: generate via `unlockCodeGenerator`, collect via `getResult` (`sourceFunct
 | sourceFunction | string | e.g. weather, turbinecheck, unlockCodeGenerator |
 | payload | object/string | One item removed from hub queue per `getResult` |
 
+### HubFailureClass
+
+| Value | Meaning |
+|-------|---------|
+| SESSION_OVER | New start required; consume session attempt |
+| CONFIG_REJECTED | New start required; consume session attempt |
+| RETRYABLE | Keep session; e.g. getResult empty |
+| SUCCESS | Continue / flag path |
+
 ### Flag
 
 | Field | Type | Rules |
@@ -113,6 +122,7 @@ ConfigurationSession ── obtains ── WeatherForecastReport, TurbineReport
 TurbineReport + WeatherForecastReport ── build ── ConfigurationBatch
 ConfigurationBatch 1──* ConfigPoint 1──1 UnlockCode
 ConfigurationSession ── done ── Flag?
+HubFailureClassifier ── classifies ── HubFailureClass
 ```
 
 ## Validation Summary (from spec)
@@ -123,5 +133,7 @@ ConfigurationSession ── done ── Flag?
 - Times: hour precision only
 - Unlock: one code per ConfigPoint, before `config` send
 - Attempts: increment only when new `start` required
+- Async poll: default 500ms interval, backoff cap 2000ms; stop on result, session-over, or 40s budget (FR-011)
 - Schedule: code builds when structured parse succeeds; LLM gap-fill only otherwise (FR-018)
 - Setup missing keys/hub unreachable before first start: fail run without consuming attempt
+- Glossary: Capture run = one JVM process; Session attempt = one hub start→done/expiry

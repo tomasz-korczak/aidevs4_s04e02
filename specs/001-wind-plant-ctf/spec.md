@@ -177,7 +177,11 @@ distinct signing code per batch item from the unlock-code step.
   configuration session; order weather forecast; get turbine report; retrieve
   forecast report; obtain unlock/signing codes and prepare/send a wind-turbine
   configuration batch; execute turbine checked; send done. Unlock codes MUST be
-  obtained before the configuration command is sent.
+  obtained before the configuration command is sent. Orchestration MUST prefer a
+  code-driven session sequencer (or equivalent deterministic control flow) that
+  invokes `plantTool` actions in this order. The LLM MAY choose arguments and
+  gap-fill unstructured text, but MUST NOT reorder, skip, or invent alternate
+  critical steps while a session is active.
 - **FR-004**: System MUST treat a windstorm as any period where wind speed is
   greater than or equal to turbine strength, and MUST configure idle (no power
   production) with a pitch angle obtained per FR-021 for every such period in
@@ -208,8 +212,12 @@ distinct signing code per batch item from the unlock-code step.
   otherwise unused hours that are not required for storm safety or that first
   production opportunity.
 - **FR-011**: System MUST handle asynchronous plant operations by ordering work
-  first and later retrieving results (including polling after an unknown delay)
-  before depending on report contents.
+  first and later retrieving results via `getResult`. While waiting, the system
+  MUST poll at a configurable interval defaulting to **500ms**, with optional
+  backoff up to **2000ms**, and MUST stop polling for that item when (a) a matching
+  result arrives, (b) the hub reports the configuration session is over, or
+  (c) the session’s 40-second budget is exhausted. There is no separate
+  application-level max-wait beyond the hub session window.
 - **FR-012**: System MUST retrieve each generated report at most once and MUST
   correctly interpret reports even when multiple results arrive in random order.
 - **FR-013**: System MUST complete an entire start-to-done attempt within 40
@@ -308,6 +316,8 @@ distinct signing code per batch item from the unlock-code step.
 
 ## Assumptions
 
+- Glossary: **Capture run** = one JVM process. **Session attempt** = one hub
+  `start`→`done` (or expiry); counted by FR-014/FR-015.
 - Plant tool operation names and behaviors match the exercise description
   (start, forecast order, turbine report, forecast retrieve, batch configure,
   checked, done, unlock-code generator, async get-result style retrieval).
@@ -324,5 +334,7 @@ distinct signing code per batch item from the unlock-code step.
   arguments, preserving the parameter-free console constitution.
 - Network access to the plant configuration service and required secrets are
   available in the runtime environment before launch.
-- One process run may include multiple attempts up to the limit, then exits;
-  the operator starts a new process only if they want another overall run.
+- One process run may include multiple session attempts up to the limit, then exits;
+  the operator starts a new process only if they want another overall capture run.
+- Process exit codes: `0` on flag success; non-zero on setup failure or exhausted
+  session-attempt budget (exact non-zero values are an implementation choice).

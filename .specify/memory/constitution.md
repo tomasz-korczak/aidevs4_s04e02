@@ -1,14 +1,13 @@
 <!--
 Sync Impact Report
-- Version change: (uninitialized template) → 1.0.0
+- Version change: 1.0.0 → 1.0.1
 - Modified principles:
-  - [PRINCIPLE_1_NAME] → I. Parameter-Free Console Entry
-  - [PRINCIPLE_2_NAME] → II. One-Shot Autonomous Run
-  - [PRINCIPLE_3_NAME] → III. OpenRouter LLM for Decisions
-  - [PRINCIPLE_4_NAME] → IV. Flag-Seeking Action Loop
-  - [PRINCIPLE_5_NAME] → V. Minimal Surface Area
-- Added sections: Runtime Constraints, Development Workflow
-- Removed sections: none (placeholders replaced)
+  - II. One-Shot Autonomous Run — clarify process-level capture may include
+    multiple hub configuration sessions within one non-interactive run
+- Modified sections:
+  - Runtime Constraints — lifecycle wording: capture vs hub session attempts
+- Added sections: none
+- Removed sections: none
 - Follow-up TODOs: none
 -->
 
@@ -26,10 +25,10 @@ Rationale: The exercise is a fixed CTF scenario; CLI parsing adds surface
 area without value.
 
 ### II. One-Shot Autonomous Run
-Each process start MUST perform one end-to-end attempt: run the action
-sequence, evaluate outcomes, and exit. The program MUST NOT wait for
-ongoing user input after start. Success is finding and reporting the flag;
-failure MUST exit with a clear console message.
+Each process start MUST perform one end-to-end capture: run the action
+sequence (including any allowed hub session retries), evaluate outcomes, and exit.
+The program MUST NOT wait for ongoing user input after start. Success is finding
+and reporting the flag; failure MUST exit with a clear console message.
 
 Rationale: This is a one-time exercise runner, not a long-lived service
 or REPL.
@@ -66,7 +65,9 @@ Rationale: Bare-minimum scope keeps the exercise focused and maintainable.
 - CLI: zero command-line parameters; no required interactive setup after launch.
 - LLM provider: OpenRouter API exclusively for model access.
 - Secrets: OpenRouter API key and any related tokens via environment only.
-- Lifecycle: one process run equals one autonomous CTF attempt.
+- Lifecycle: one process run equals one autonomous CTF capture (non-interactive);
+  within that capture the app MAY perform multiple hub configuration sessions
+  (each requiring a new `start`) up to a configured session-attempt budget, then exit.
 - Output: progress and final flag (or failure reason) on the console.
 
 ## Development Workflow
@@ -92,4 +93,4 @@ Compliance: plans, specs, and reviews MUST verify that proposed work still
 meets Principles I–V and Runtime Constraints. Complexity beyond the
 flag-seeking one-shot console flow MUST be justified in the plan or rejected.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-08-16
+**Version**: 1.0.1 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-08-17

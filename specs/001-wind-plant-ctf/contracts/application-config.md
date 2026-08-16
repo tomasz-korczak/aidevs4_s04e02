@@ -33,8 +33,19 @@ app:
     openrouter-base-url: https://openrouter.ai/api
   plant:
     max-session-attempts: 5
+    get-result-poll-interval-ms: 500
+    get-result-poll-max-interval-ms: 2000
+    session-over-message-patterns:
+      - "session is over"
+      - "configuration session is over"
+      - "service window"
+    config-rejected-message-patterns:
+      - "incorrect"
+      - "insufficient power"
+      - "unsafe"
+      - "destroyed"
   prompt:
-    system-template-location: classpath:prompts/system-prompt.st
+    system-template-location: classpath:prompts/system-prompt.txt
 
 logging:
   file:
@@ -48,13 +59,17 @@ logging:
 | Hub API key | `HUB_API_KEY` |
 | OpenRouter API key | `OPENROUTER_API_KEY` |
 | plantTool session attempt limit | `app.plant.max-session-attempts` (default 5) |
+| Async `getResult` poll interval | `app.plant.get-result-poll-interval-ms` (default 500) |
+| Async poll backoff cap | `app.plant.get-result-poll-max-interval-ms` (default 2000) |
+| Session-over detection substrings | `app.plant.session-over-message-patterns` |
+| Config-rejected detection substrings | `app.plant.config-rejected-message-patterns` |
 | HTTP addresses | `app.hub.verify-url`, `app.llm.openrouter-base-url` |
-| Main system prompt | `app.prompt.system-template-location` (StringTemplate resource) |
+| Main system prompt | `app.prompt.system-template-location` (classpath text; `{{var}}` placeholders) |
 | LLM model name | `app.llm.model` → `spring.ai.openai.chat.options.model` |
 
 ## System prompt template requirements
 
-Resource `classpath:prompts/system-prompt.st` MUST instruct the agent to:
+Resource `classpath:prompts/system-prompt.txt` MUST instruct the agent to:
 
 1. Call `start` first; respect 40s session; on session-over, restart with new `start` (counts as attempt)
 2. Order: start → get weather + turbine data (poll `getResult`) → build necessary configs → unlockCodeGenerator per item → batch `config` chronological → `get` turbinecheck (+ getResult) → `done`
@@ -67,5 +82,6 @@ Resource `classpath:prompts/system-prompt.st` MUST instruct the agent to:
 9. Stop when `{FLG:...}` appears; surface it
 10. Obtain idle and max-production pitch from hub documentation/turbine payloads; if either is missing, fail the attempt and call start again (do not invent pitches).
 11. When forecast/turbine data is structured, prefer deterministic schedule construction; use model judgment only for unparseable gaps.
+12. Critical path order is enforced by the application sequencer; do not reorder or skip mandatory steps.
 
-Template variables may include attempt limit, verify URL (non-secret), and model name for operator context—never embed API keys in the prompt.
+Template variables use `{{maxAttempts}}`, `{{model}}`, `{{verifyUrl}}` for operator context—never embed API keys in the prompt.

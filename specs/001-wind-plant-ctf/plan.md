@@ -6,7 +6,11 @@
 
 ## Summary
 
-Build a parameter-free Spring Boot console application that captures the wind-power CTF flag by driving the hub `windpower` task through a Spring AI `plantTool`, using OpenRouter (`inclusionai/ling-3.0-flash` by default). Each process run performs up to N configuration sessions (`start` → gather reports → code-built schedule when parseable → per-item unlock codes → chronological `config` batch → `turbinecheck` → `done`), with the LLM orchestrating tools and gap-filling only when parsing fails. Pitch values MUST come from hub docs/turbine payloads. Logging covers all tool and model I/O to console and file; process exits on `{FLG:...}` or exhausted attempts.
+Build a parameter-free Spring Boot console application that captures the wind-power CTF flag by driving the hub `windpower` task through a Spring AI `plantTool`, using OpenRouter (`inclusionai/ling-3.0-flash` by default). Each process run performs up to N configuration sessions (`start` → gather reports → code-built schedule when parseable → per-item unlock codes → chronological `config` batch → `turbinecheck` → `done`), with a **code-driven session sequencer** owning that critical path and the LLM gap-filling only when parsing fails. Pitch values MUST come from hub docs/turbine payloads. Logging covers all tool and model I/O to console and file; process exits on `{FLG:...}` or exhausted attempts.
+
+## Orchestration
+
+`CaptureAgent` owns a code-driven session loop: start → gather (`get`/`getResult`) → schedule (`TurbineScheduleBuilder` when parseable) → unlock per item → config batch → `turbinecheck` → `done`. ChatClient/tool-calling assists interpretation and FR-018 gap-fill only; it does not freely reorder the critical path.
 
 ## Technical Context
 
@@ -35,12 +39,13 @@ Build a parameter-free Spring Boot console application that captures the wind-po
 | Gate | Status | Notes |
 |------|--------|-------|
 | I. Parameter-Free Console Entry | PASS | Env + `application.yml` / prompt template only; no CLI args |
-| II. One-Shot Autonomous Run | PASS | `ApplicationRunner` drives capture then `SpringApplication.exit` |
+| II. One-Shot Autonomous Run | PASS | `ApplicationRunner` drives one capture (≤N hub sessions) then `SpringApplication.exit` |
 | III. OpenRouter LLM for Decisions | PASS | OpenAI starter pointed at OpenRouter; key from `OPENROUTER_API_KEY` |
-| IV. Flag-Seeking Action Loop | PASS | Tool-calling loop until `{FLG:...}` or attempts exhausted |
+| IV. Flag-Seeking Action Loop | PASS | Tool-calling / sequencer until `{FLG:...}` or session attempts exhausted |
 | V. Minimal Surface Area | PASS | Single Maven module; no HTTP server; only hub + OpenRouter clients |
 | Runtime: console only, no HTTP server | PASS | `spring.main.web-application-type=none` |
 | Runtime: secrets via environment | PASS | `HUB_API_KEY`, `OPENROUTER_API_KEY` |
+| Runtime: one capture per process | PASS | Multiple hub `start` sessions allowed within configured budget (constitution 1.0.1) |
 
 **Post-Phase 1 re-check**: PASS — design remains a single console module with ChatClient + PlantTool + config properties; no extra services or UI.
 
@@ -75,11 +80,14 @@ src/main/java/pl/tomaszko/s04e02/
 ├── hub/
 │   ├── HubClient.java
 │   ├── HubWindpowerRequest.java
-│   └── HubWindpowerResponse.java
+│   ├── HubWindpowerResponse.java
+│   ├── HubFailureClassifier.java
+│   └── AsyncResultPoller.java
 ├── tools/
 │   └── PlantTool.java
 ├── schedule/
-│   └── TurbineScheduleBuilder.java   # deterministic storm/production rules
+│   ├── TurbineScheduleBuilder.java   # deterministic storm/production rules
+│   └── UnlockCodeService.java
 ├── agent/
 │   ├── CaptureAgent.java
 │   └── PromptFactory.java
@@ -92,7 +100,7 @@ src/main/resources/
 ├── application.yml
 ├── logback-spring.xml
 └── prompts/
-    └── system-prompt.st              # StringTemplate / resource template
+    └── system-prompt.txt             # classpath prompt; {{maxAttempts}}, {{model}}, {{verifyUrl}}
 src/test/java/pl/tomaszko/s04e02/
 ├── schedule/
 ├── hub/

@@ -25,11 +25,12 @@
 
 ## Decision: Agentic ChatClient + hybrid schedule authorship (FR-018)
 
-- **Decision**: Expose hub operations as Spring AI `PlantTool`. Drive the run with `ChatClient` tool calling. **`TurbineScheduleBuilder` (code) builds the configuration batch whenever turbine/forecast data parse cleanly.** The LLM orchestrates `plantTool` and may gap-fill only unparseable portions. Encode CTF rules in the system prompt as a safety net. Pitch angles MUST come from hub documentation/turbine payloads; missing pitch fails the attempt (FR-021).
-- **Rationale**: User requires Spring AI tool calling; Spec FR-018 (clarified hybrid) keeps code as primary schedule author when data is structured.
+- **Decision**: Expose hub operations as Spring AI `PlantTool`. Drive each session with a **code-driven sequencer** in `CaptureAgent` (FR-003 order). Use `ChatClient` for unstructured interpretation and FR-018 gap-fill only—not for reordering critical steps. **`TurbineScheduleBuilder` (code) builds the configuration batch whenever turbine/forecast data parse cleanly.** Encode CTF rules in the system prompt (`system-prompt.txt` with `{{var}}` placeholders; no ST4) as a safety net. Pitch angles MUST come from hub documentation/turbine payloads; missing pitch fails the attempt (FR-021).
+- **Rationale**: User requires Spring AI tool calling; Spec FR-018 (clarified hybrid) and FR-003 (code sequencer) keep code as primary schedule author and path owner when data is structured.
 - **Alternatives considered**:
   - Pure deterministic orchestrator with no LLM — conflicts with constitution OpenRouter principle and user Spring AI requirement.
-  - LLM invents all pitches / always authors batch — conflicts with FR-018/FR-021.
+  - LLM invents all pitches / always authors batch / freely reorders steps — conflicts with FR-003/FR-018/FR-021.
+  - StringTemplate (ST4) for prompts — rejected for minimal surface area; use classpath text + `{{var}}` substitution.
 
 ## Decision: Hub verify API as sole plant transport
 

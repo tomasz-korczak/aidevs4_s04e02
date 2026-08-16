@@ -111,4 +111,24 @@ Validates final configuration. On success, response contains `{FLG:...}`.
 
 - Parse JSON when possible; keep raw string for logging and flag extraction
 - Flag pattern: `\{FLG:[^}]+\}`
-- Treat explicit session-expired / configuration-invalid messages as attempt failures requiring a new `start`
+- Classify failures per **Failure classification** below; log the raw body when classifying
+
+## Failure classification (application)
+
+Treat a hub response as **session invalid** (consume session attempt, require new `start`) when any of:
+
+1. **Session over / timeout**: message or body (case-insensitive) contains
+   `session is over`, `configuration session is over`, `service window`, or
+   equivalent hub wording that the 40s window ended; OR explicit timeout/expired
+   error code if present in the JSON `code`/`message` fields.
+2. **Rejected configuration**: `turbinecheck` / `done` (or `config`) response
+   indicates incorrect/unsafe configuration, insufficient power, or storm-safety
+   failure (match on hub `message` text and/or non-success `code` excluding
+   “queued / accepted / help” successes).
+
+Treat as **in-session recoverable** (do not increment attempt): empty queue /
+“no result yet” on `getResult`, transient parse gaps while session still valid.
+
+Exact hub strings may vary; implement matching as configurable substrings in
+`app.plant.session-over-message-patterns` and `app.plant.config-rejected-message-patterns`
+with the defaults in `contracts/application-config.md`, and log the raw body when classifying.
